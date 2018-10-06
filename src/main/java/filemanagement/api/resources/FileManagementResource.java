@@ -1,33 +1,53 @@
 package filemanagement.api.resources;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
+
+import com.google.api.services.drive.model.File;
+import com.sun.jersey.core.header.FormDataContentDisposition;
+import com.sun.jersey.multipart.FormDataParam;
+import filemanagement.api.manager.FileManagementManager;
+
+import javax.inject.Inject;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.*;
+import java.security.GeneralSecurityException;
 
-@Path("/file")
+import static filemanagement.api.util.DriveServiceUtil.getDriveService;
+
+@Path("/files")
 public class FileManagementResource {
-    @GET
-    @Path("/search")
-    public Response getFies() {
-        return Response.ok("get files").build();
-    }
+    @Inject
+    FileManagementManager fileManagementManager;
 
     @GET
-    @Path("/download")
-    public Response downloadFile() {
-        return Response.ok("download files").build();
+    @Path("/allFilesInFolder/{parentFolderId}")
+    @Produces("application/json")
+    public Response getFies(@PathParam("parentFolderId") String folderId) {
+        return Response.ok(fileManagementManager.getAllFilesUsingFolderID(folderId)).build();
     }
 
     @POST
-    @Path("/upload")
-    public Response uploadFile() {
-        return Response.ok("upload File files").build();
+    @Path("uploadFileToFolder/{parentFolderId}")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    public Response uploadFile(@Valid @NotNull @FormDataParam("file") InputStream uploadedInputStream,
+                               @Valid @NotNull @FormDataParam("file") FormDataContentDisposition fileDetail,
+                               @PathParam("parentFolderId") String parentFolderId) {
+        if (fileDetail.getFileName() == null) {
+            throw new BadRequestException("uploded File missing");
+        }
+        fileManagementManager.uploadFiletoParentFolder(parentFolderId, uploadedInputStream, fileDetail.getFileName());
+        return Response.status(201).entity("uploaded").build();
+
     }
 
-    @POST
-    @Path(":parentID/upload")
-    public Response uploadFileToParent() {
-        return Response.ok("upload File files").build();
+    //ex Id: 1TEL5a1A7pIzPjvFhH-6_fKzX0R2XgwdC
+    @GET
+    @Path("/downloadFileById/{fileId}")
+    public Response downloadFile(@PathParam("fileId") String fileId) {
+        return fileManagementManager.downloadFileById(fileId);
     }
+
 }
